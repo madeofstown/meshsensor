@@ -1,13 +1,7 @@
 # MeshSensor Telemetry System
 
-MeshSensor is a telemetry system designed to collect and visualize environmental metrics from a mesh network of sensors. It includes a Flask-based web dashboard, a listener service for telemetry data, and a database for storing sensor readings.
+MeshSensor is used to collect and visualize environmental metrics from nodes in a Meshtastic network. It includes a Flask-based web dashboard, a listener service for telemetry data, and a database for storing sensor readings.
 
-## Features
-
-- 🌡️ **Real-time telemetry**: Collect temperature, humidity, pressure, and other environmental metrics.
-- 📊 **Interactive dashboard**: Visualize sensor data over time with charts.
-- 🔌 **Mesh network integration**: Communicate with nodes in a Meshtastic mesh network.
-- 🛠️ **Customizable**: Easily configure nodes and database settings via `config.json`.
 
 ## Installation
 
@@ -82,14 +76,7 @@ Telemetry data is stored in `sensorDB.json`. The database includes:
 - `shared_functions.py`: Utility functions for processing telemetry.
 - `data_modules.py`: Data models for nodes and telemetry.
 - `templates/`: HTML templates for the web dashboard.
-- `static/`: Static assets (e.g., JavaScript, CSS).
-
-### Running Tests
-
-To test the system, use the `test.py` script:
-```bash
-python test.py
-```
+- `static/`: Static assets (echarts.min.js).
 
 ## License
 
