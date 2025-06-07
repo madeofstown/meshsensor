@@ -1,4 +1,4 @@
-# MeshSensor Telemetry System
+# MeshSensor
 
 MeshSensor is used to collect and visualize environmental metrics from nodes in a Meshtastic network. It includes a Flask-based web dashboard, a listener service for telemetry data, and a database for storing sensor readings.
 
