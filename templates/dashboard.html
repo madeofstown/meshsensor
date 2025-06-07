@@ -132,16 +132,27 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      // Initialize charts
       const chartData = {{ chart_data | tojson }};
+      const chartRefs = {};
+      const seenTimestamps = {};
+      const MAX_POINTS = 100;
+
+      // Initialize charts
       for (const metric in chartData) {
         const chart = echarts.init(document.getElementById(metric), 'dark');
-        const series = Object.entries(chartData[metric]).map(([node, data]) => ({
-          name: node,
-          type: 'line',
-          smooth: true,
-          data: data
-        }));
+        chartRefs[metric] = chart;
+
+        const series = Object.entries(chartData[metric]).map(([node, data]) => {
+          seenTimestamps[metric] ??= {};
+          seenTimestamps[metric][node] = new Set(data.map(p => p[0]));
+          return {
+            name: node,
+            type: 'line',
+            smooth: true,
+            data: data
+          };
+        });
+
         chart.setOption({
           title: { text: metric + ' Over Time' },
           tooltip: { trigger: 'axis' },
@@ -152,17 +163,58 @@
         });
       }
 
-      // Load node links
-      fetch('/nodes')
-        .then(res => res.json())
-        .then(nodes => {
-          const nav = document.getElementById('node-links');
-          nav.innerHTML = nodes.map(n =>
-            `<a href="/node/${n.id}" style="margin-right: 10px;">${n.name}</a>`
-          ).join('');
-        });
+      function updateCharts() {
+        fetch('/latest-chart-data')
+          .then(res => res.json())
+          .then(newData => {
+            for (const metric in newData) {
+              const chart = chartRefs[metric];
+              if (!chart) continue;
 
-      // Live update summary
+              const option = chart.getOption();
+              const seriesList = option.series;
+
+              for (const [node, points] of Object.entries(newData[metric])) {
+                const idx = seriesList.findIndex(s => s.name === node);
+                seenTimestamps[metric] ??= {};
+                seenTimestamps[metric][node] ??= new Set();
+
+                const newPoints = points.filter(([ts]) => !seenTimestamps[metric][node].has(ts));
+                newPoints.forEach(([ts]) => seenTimestamps[metric][node].add(ts));
+
+                if (newPoints.length > 0) {
+                  if (idx !== -1) {
+                    // Append
+                    chart.appendData({
+                      seriesIndex: idx,
+                      data: newPoints
+                    });
+
+                    // Trim series
+                    const updated = [...seriesList[idx].data, ...newPoints].slice(-MAX_POINTS);
+                    seriesList[idx].data = updated;
+                    seenTimestamps[metric][node] = new Set(updated.map(p => p[0]));
+
+                    chart.setOption({ series: seriesList });
+                  } else {
+                    // New node
+                    const trimmed = newPoints.slice(-MAX_POINTS);
+                    chart.setOption({
+                      series: [{
+                        name: node,
+                        type: 'line',
+                        smooth: true,
+                        data: trimmed
+                      }]
+                    });
+                    seenTimestamps[metric][node] = new Set(trimmed.map(p => p[0]));
+                  }
+                }
+              }
+            }
+          });
+      }
+
       function updateLatest() {
         fetch('/latest-data')
           .then(res => res.json())
@@ -182,10 +234,13 @@
             }
           });
       }
-      updateLatest();
-      setInterval(updateLatest, 15000);
 
-      // Cooldown + spinner logic
+      updateLatest();
+      updateCharts();
+      setInterval(updateLatest, 15000);
+      setInterval(updateCharts, 15000);
+
+      // Cooldown logic
       const cooldownMinutes = 5;
       const cooldownKey = "lastTelemetryRequest";
       const button = document.getElementById("telemetry-button");
@@ -214,6 +269,15 @@
 
       updateCooldownState();
       setInterval(updateCooldownState, 30000);
+
+      fetch('/nodes')
+        .then(res => res.json())
+        .then(nodes => {
+          const nav = document.getElementById('node-links');
+          nav.innerHTML = nodes.map(n =>
+            `<a href="/node/${n.id}" style="margin-right: 10px;">${n.name}</a>`
+          ).join('');
+        });
     });
   </script>
 </body>

@@ -148,6 +148,25 @@ def latest_data():
         "lastSeen": last_seen
     })
 
+@app.route('/latest-chart-data')
+def latest_chart_data():
+    data = load_raw_data()
+    chart_points = {}
+
+    for node in data.nodes:
+        name = node.longName.strip()
+        if not node.telemetry:
+            continue
+
+        latest = sorted(node.telemetry, key=lambda x: x.time, reverse=True)[0]
+        timestamp = datetime.fromtimestamp(latest.time, tz=timezone.utc).isoformat()
+
+        for metric, value in latest.environmentMetrics.items():
+            if value is not None:
+                chart_points.setdefault(metric, {}).setdefault(name, []).append([timestamp, value])
+
+    return jsonify(chart_points)
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
