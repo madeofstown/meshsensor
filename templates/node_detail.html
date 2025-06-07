@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{{ node_name }}</title>
+  <script src="/static/echarts.min.js"></script>
+  <style>
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .chart-box {
+      width: 100%;
+      height: 400px;
+      background: #1e1e1e;
+      margin-bottom: 40px;
+      padding: 10px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📊 {{ node_name }} (Node ID: {{ node_id }})</h2>
+  <a href="/">← Back to Dashboard</a>
+  {% for metric, values in metrics.items() %}
+    <div id="{{ metric }}" class="chart-box"></div>
+  {% endfor %}
+
+  <script>
+    const metrics = {{ metrics | tojson }};
+    for (const metric in metrics) {
+      const chart = echarts.init(document.getElementById(metric), 'dark');
+      chart.setOption({
+        title: { text: metric + ' Over Time' },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'time' },
+        yAxis: { type: 'value', name: metric },
+        series: [{
+          name: metric,
+          type: 'line',
+          smooth: true,
+          data: metrics[metric]
+        }]
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "radio_host": "127.0.0.1",
+  "node_ids": [305441741, "!1234abcd"],
+  "db_file": "sensorDB.json",
+  "channel_index": 1
+}
