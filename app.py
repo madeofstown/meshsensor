@@ -18,7 +18,11 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 def load_raw_data():
-    return data_modules.SensorDataBase.from_json_file(DB_FILE)
+    try:
+        return data_modules.SensorDataBase.from_json_file(DB_FILE)
+    except Exception as e:
+        print(f"⚠️ Error loading sensor DB: {e}")
+        return data_modules.SensorDataBase([])
 
 def convert_timestamp(ts):
     return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
@@ -29,17 +33,14 @@ def dashboard():
     chart_data = {'temperature': {}, 'relativeHumidity': {}}
     latest_metrics = {}
     last_seen = {}
-
     now = datetime.now(timezone.utc)
     latest_timestamp = 0
 
     for node in data.nodes:
         name = node.longName.strip()
         telemetry = sorted(node.telemetry, key=lambda x: x.time, reverse=True)
-
         latest_metrics[name] = {'temperature': None, 'relativeHumidity': None}
         last_seen[name] = "Never"
-
         if not telemetry:
             continue
 
@@ -55,16 +56,10 @@ def dashboard():
         delta = now - last_time
         minutes = int(delta.total_seconds() // 60)
         seconds = int(delta.total_seconds() % 60)
+        last_seen[name] = f"{minutes} min {seconds} sec ago" if minutes else f"{seconds} sec ago"
 
-        last_seen[name] = (
-            f"{minutes} min {seconds} sec ago"
-            if minutes > 0 else f"{seconds} sec ago"
-        )
-
-        # Update max timestamp
         latest_timestamp = max(latest_timestamp, latest.time)
 
-        # Build chart data
         for t in telemetry:
             ts = datetime.fromtimestamp(t.time, tz=timezone.utc).isoformat()
             for key in chart_data:
@@ -72,20 +67,13 @@ def dashboard():
                 if value is not None:
                     chart_data[key].setdefault(name, []).append((ts, value))
 
-    latest_time = max(
-        (t.time for node in data.nodes for t in node.telemetry),
-        default=0
-    )
-
     return render_template(
         "dashboard.html",
         chart_data=chart_data,
         latest_metrics=latest_metrics,
         last_seen=last_seen,
-        latest_time=int(latest_time)  # <-- Add this line
+        latest_time=int(latest_timestamp)
     )
-
-
 
 @app.route('/node/<int:node_id>')
 def node_detail(node_id):
@@ -125,17 +113,14 @@ def latest_data():
     data = load_raw_data()
     latest_metrics = {}
     last_seen = {}
-
+    last_timestamps = {}
     now = datetime.now(timezone.utc)
 
     for node in data.nodes:
         name = node.longName.strip()
         telemetry = sorted(node.telemetry, key=lambda x: x.time, reverse=True)
-
-        # Initialize with safe defaults
         latest_metrics[name] = {'temperature': None, 'relativeHumidity': None}
         last_seen[name] = "Never"
-
         if not telemetry:
             continue
 
@@ -151,25 +136,13 @@ def latest_data():
         delta = now - last_time
         minutes = int(delta.total_seconds() // 60)
         seconds = int(delta.total_seconds() % 60)
-
-        if minutes > 0:
-            last_seen[name] = f"{minutes} min {seconds} sec ago"
-        else:
-            last_seen[name] = f"{seconds} sec ago"
+        last_seen[name] = f"{minutes} min {seconds} sec ago" if minutes else f"{seconds} sec ago"
+        last_timestamps[name] = int(latest.time)
 
     latest_timestamp = max(
         (t.time for node in data.nodes for t in node.telemetry),
         default=0
     )
-
-    last_timestamps = {}
-
-    for node in data.nodes:
-        name = node.longName.strip()
-        telemetry = sorted(node.telemetry, key=lambda x: x.time, reverse=True)
-        if telemetry:
-            latest = telemetry[0]
-            last_timestamps[name] = int(latest.time)
 
     return jsonify({
         "metrics": latest_metrics,
@@ -177,7 +150,6 @@ def latest_data():
         "lastTimestamps": last_timestamps,
         "lastUpdated": int(latest_timestamp)
     })
-
 
 @app.route('/latest-chart-data')
 def latest_chart_data():
@@ -188,7 +160,6 @@ def latest_chart_data():
         name = node.longName.strip()
         if not node.telemetry:
             continue
-
         latest = sorted(node.telemetry, key=lambda x: x.time, reverse=True)[0]
         timestamp = datetime.fromtimestamp(latest.time, tz=timezone.utc).isoformat()
 
@@ -197,7 +168,6 @@ def latest_chart_data():
                 chart_points.setdefault(metric, {}).setdefault(name, []).append([timestamp, value])
 
     return jsonify(chart_points)
-
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
