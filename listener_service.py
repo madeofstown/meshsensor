@@ -1,3 +1,5 @@
+import io
+import sys
 from flask import Flask, jsonify
 import time
 import threading
@@ -10,11 +12,20 @@ import data_modules
 from shared_functions import processTelemetry, requestTelemetry, addNode
 
 
+### Quiet the console
+output_buffer = io.StringIO()
+sys.stdout = output_buffer
+
+### And provide a way to output what we want to see
 def safe_print(msg):
     try:
+        sys.stdout = sys.__stdout__
         print(msg)
+        sys.stdout = output_buffer
     except UnicodeEncodeError:
+        sys.stdout = sys.__stdout__
         print(msg.encode("ascii", errors="replace").decode())
+        sys.stdout = output_buffer
 
 # Load config
 with open("config.json") as f:
