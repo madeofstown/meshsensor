@@ -55,10 +55,10 @@ def connect_to_radio():
             iface = meshtastic.tcp_interface.TCPInterface(RADIO_HOST)
             pub.subscribe(onReceive, "meshtastic.receive")
             pub.subscribe(onConnectionLost, "meshtastic.connection.lost")
-            print("✅ Connected to Meshtastic Node.")
+            print("Connected to Meshtastic Node.")
             break
         except Exception as e:
-            print(f"❌ Connection failed: {e}. Retrying in 5 seconds...")
+            print(f"Connection failed: {e}. Retrying in 5 seconds...")
             time.sleep(5)
 
 # Flask microservice
@@ -69,9 +69,9 @@ def trigger_telemetry():
     def background_request():
         try:
             requestTelemetry(iface, NODE_IDS, CH_INDEX)
-            print("📡 Sent telemetry requests.")
+            print("Sent telemetry requests.")
         except Exception as e:
-            print(f"❌ Error during telemetry request: {e}")
+            print(f"Error during telemetry request: {e}")
     threading.Thread(target=background_request).start()
     return jsonify({"status": "ok", "message": "Telemetry request started."})
 
@@ -81,7 +81,7 @@ def run_listener():
 
 # Start everything
 if __name__ == "__main__":
-    print("🚀 Starting MeshSensor listener service...")
+    print("Starting MeshSensor listener service...")
     connect_to_radio()
     threading.Thread(target=run_listener).start()
     try:
@@ -90,4 +90,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         if iface:
             iface.close()
-        print("🔌 Listener stopped.")
+        print("Listener stopped.")

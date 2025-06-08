@@ -19,10 +19,15 @@ app.secret_key = os.urandom(24)
 
 def load_raw_data():
     try:
-        return data_modules.SensorDataBase.from_json_file(DB_FILE)
+        with open(DB_FILE) as f:
+            content = f.read().strip()
+            if not content or content == "{}":
+                raise ValueError("sensorDB.json is empty or missing required fields.")
+            return data_modules.SensorDataBase.from_json(content)
     except Exception as e:
-        print(f"⚠️ Error loading sensor DB: {e}")
+        print(f"Error loading sensor DB: {e}")
         return data_modules.SensorDataBase([])
+
 
 def convert_timestamp(ts):
     return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
