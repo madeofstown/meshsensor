@@ -12,9 +12,9 @@ from shared_functions import processTelemetry, requestTelemetry, addNode
 
 def safe_print(msg):
     try:
-        safe_print(msg)
+        print(msg)
     except UnicodeEncodeError:
-        safe_print(msg.encode("ascii", errors="replace").decode())
+        print(msg.encode("ascii", errors="replace").decode())
 
 # Load config
 with open("config.json") as f:
