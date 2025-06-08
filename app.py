@@ -31,37 +31,38 @@ def dashboard():
     last_seen = {}
 
     now = datetime.now(timezone.utc)
+    latest_timestamp = 0
 
     for node in data.nodes:
         name = node.longName.strip()
         telemetry = sorted(node.telemetry, key=lambda x: x.time, reverse=True)
 
-        # Defaults if no telemetry
         latest_metrics[name] = {'temperature': None, 'relativeHumidity': None}
         last_seen[name] = "Never"
 
         if not telemetry:
-            continue  # Skip processing if there's no data
+            continue
 
         latest = telemetry[0]
         metrics = latest.environmentMetrics
 
-        # Fill in latest values
         latest_metrics[name] = {
             'temperature': metrics.get('temperature'),
             'relativeHumidity': metrics.get('relativeHumidity')
         }
 
-        # Time ago label
         last_time = datetime.fromtimestamp(latest.time, tz=timezone.utc)
         delta = now - last_time
         minutes = int(delta.total_seconds() // 60)
         seconds = int(delta.total_seconds() % 60)
 
-        if minutes > 0:
-            last_seen[name] = f"{minutes} min {seconds} sec ago"
-        else:
-            last_seen[name] = f"{seconds} sec ago"
+        last_seen[name] = (
+            f"{minutes} min {seconds} sec ago"
+            if minutes > 0 else f"{seconds} sec ago"
+        )
+
+        # Update max timestamp
+        latest_timestamp = max(latest_timestamp, latest.time)
 
         # Build chart data
         for t in telemetry:
@@ -71,7 +72,14 @@ def dashboard():
                 if value is not None:
                     chart_data[key].setdefault(name, []).append((ts, value))
 
-    return render_template("dashboard.html", chart_data=chart_data, latest_metrics=latest_metrics, last_seen=last_seen)
+    return render_template(
+        "dashboard.html",
+        chart_data=chart_data,
+        latest_metrics=latest_metrics,
+        last_seen=last_seen,
+        latest_time=latest_timestamp  # ⬅️ passed into template
+    )
+
 
 @app.route('/node/<int:node_id>')
 def node_detail(node_id):
@@ -143,9 +151,15 @@ def latest_data():
         else:
             last_seen[name] = f"{seconds} sec ago"
 
+    latest_timestamp = max(
+        (t.time for node in data.nodes for t in node.telemetry if node.telemetry),
+        default=0
+    )
+
     return jsonify({
         "metrics": latest_metrics,
-        "lastSeen": last_seen
+        "lastSeen": last_seen,
+        "lastUpdated": latest_timestamp
     })
 
 @app.route('/latest-chart-data')
