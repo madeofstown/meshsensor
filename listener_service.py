@@ -33,13 +33,13 @@ def onReceive(packet, interface):
         (packet["fromId"] or packet["from"]) in NODE_IDS and
         "environmentMetrics" in packet["decoded"]["telemetry"]
     ):
-        print(f"📥 Received telemetry from {packet['fromId']}")
+        print(f"Received telemetry from {packet['fromId']}")
         processTelemetry(packet, interface, db, DB_FILE)
 
 # Handle connection loss
 def onConnectionLost():
     global iface
-    print("⚠️ Connection to Meshtastic lost. Reconnecting...")
+    print("Connection to Meshtastic lost. Reconnecting...")
     try:
         iface.close()
     except:
