@@ -72,13 +72,19 @@ def dashboard():
                 if value is not None:
                     chart_data[key].setdefault(name, []).append((ts, value))
 
+    latest_time = max(
+        (t.time for node in data.nodes for t in node.telemetry),
+        default=0
+    )
+
     return render_template(
         "dashboard.html",
         chart_data=chart_data,
         latest_metrics=latest_metrics,
         last_seen=last_seen,
-        latest_time=latest_timestamp  # ⬅️ passed into template
+        latest_time=int(latest_time)  # <-- Add this line
     )
+
 
 
 @app.route('/node/<int:node_id>')
@@ -152,15 +158,26 @@ def latest_data():
             last_seen[name] = f"{seconds} sec ago"
 
     latest_timestamp = max(
-        (t.time for node in data.nodes for t in node.telemetry if node.telemetry),
+        (t.time for node in data.nodes for t in node.telemetry),
         default=0
     )
+
+    last_timestamps = {}
+
+    for node in data.nodes:
+        name = node.longName.strip()
+        telemetry = sorted(node.telemetry, key=lambda x: x.time, reverse=True)
+        if telemetry:
+            latest = telemetry[0]
+            last_timestamps[name] = int(latest.time)
 
     return jsonify({
         "metrics": latest_metrics,
         "lastSeen": last_seen,
-        "lastUpdated": latest_timestamp
+        "lastTimestamps": last_timestamps,
+        "lastUpdated": int(latest_timestamp)
     })
+
 
 @app.route('/latest-chart-data')
 def latest_chart_data():

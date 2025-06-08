@@ -77,7 +77,7 @@ def trigger_telemetry():
 
 # Start Flask
 def run_listener():
-    listener_app.run(port=5001, debug=False, use_reloader=False, host='0.0.0.0')
+    listener_app.run(port=5001, debug=False, use_reloader=False)
 
 # Start everything
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 Flask==2.3.2
-requests==2.31.0
-meshtastic==1.2.0
-pubsub==1.1.0
-dataclass-wizard==0.22.0
-echarts-python==0.1.0
+requests
+meshtastic
+pubsub
+dataclass-wizard
+echarts-python

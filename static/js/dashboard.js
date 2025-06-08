@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("telemetry-form");
   const button = document.getElementById("telemetry-button");
 
+  // Build charts
   for (const metric in chartData) {
     const chart = echarts.init(document.getElementById(metric), 'dark');
     const series = Object.entries(chartData[metric]).map(([node, data]) => {
@@ -32,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Cooldown logic
   function updateCooldownState() {
     const lastRequest = localStorage.getItem(cooldownKey);
     if (lastRequest) {
@@ -56,23 +58,37 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCooldownState();
   setInterval(updateCooldownState, 30000);
 
-  let lastKnownUpdate = 0;
-
   function checkForUpdates() {
     fetch('/latest-data')
       .then(res => res.json())
       .then(data => {
         const ts = Math.floor(data.lastUpdated || 0);
         if (ts > window.initialLastTimestamp) {
-          location.reload(); // Only refresh if there's newer data
+          location.reload();
+        }
+
+        const tbody = document.getElementById('latest-rows');
+        tbody.innerHTML = '';
+        for (const node in data.metrics) {
+          const c = data.metrics[node].temperature;
+          const temp = c != null ? ((c * 9 / 5) + 32).toFixed(2) : '—';
+          const rh = data.metrics[node].relativeHumidity?.toFixed(2) ?? '—';
+          const updatedTs = data.lastTimestamps[node];
+          const updated = updatedTs
+            ? `<span class="live-timer" data-timestamp="${updatedTs}"></span>`
+            : '—';
+          tbody.innerHTML += `<tr>
+            <td>${node}</td>
+            <td>${temp}</td>
+            <td>${rh}</td>
+            <td>${updated}</td>
+          </tr>`;
         }
       });
   }
 
-
   checkForUpdates();
   setInterval(checkForUpdates, 15000);
-
 
   fetch('/nodes')
     .then(res => res.json())
@@ -82,4 +98,20 @@ document.addEventListener("DOMContentLoaded", () => {
         `<a href="/node/${n.id}" style="margin-right: 10px;">${n.name}</a>`
       ).join('');
     });
+
+  function updateTimers() {
+    const now = Math.floor(Date.now() / 1000);
+    document.querySelectorAll('.live-timer').forEach(el => {
+      const ts = parseInt(el.dataset.timestamp);
+      const diff = now - ts;
+      const min = Math.floor(diff / 60);
+      const sec = diff % 60;
+      el.textContent = min > 0
+        ? `${min} min ${sec} sec ago`
+        : `${sec} sec ago`;
+    });
+  }
+
+  updateTimers();
+  setInterval(updateTimers, 1000);
 });

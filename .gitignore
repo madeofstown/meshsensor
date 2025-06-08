@@ -193,7 +193,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 sensorDB.json
-.vscode/settings.json
 config.json
 listener.py
 test.py
+new_requirements.txt

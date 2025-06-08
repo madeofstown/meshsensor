@@ -5,20 +5,24 @@
   <title>Dashboard</title>
   <link rel="stylesheet" href="/static/css/dashboard.css">
   <script>
-    window.initialLastTimestamp = {{ latest_time }};
-  </script>
-  <script src="/static/js/echarts.min.js"></script>
-  <script>
     window.chartData = {{ chart_data | tojson }};
   </script>
+  <script src="/static/js/echarts.min.js"></script>
   <script src="/static/js/dashboard.js" defer></script>
+  <script>
+    window.initialLastTimestamp = {{ latest_time }};
+  </script>
+ 
+
 </head>
 <body>
   <h2>🌡️ Sensor Dashboard</h2>
+
   <nav id="node-nav" style="margin-bottom: 20px;">
     <strong>Jump to Node:</strong>
     <span id="node-links">Loading...</span>
   </nav>
+
   {% with messages = get_flashed_messages() %}
     {% if messages %}
       <div class="flash-messages">
@@ -28,27 +32,20 @@
       </div>
     {% endif %}
   {% endwith %}
+
   <h3>Latest Readings</h3>
   <table class="readings-table">
     <thead>
       <tr>
         <th align="left">Node</th>
-        <th align="left">Temperature (°C)</th>
+        <th align="left">Temperature (°F)</th>
         <th align="left">Humidity (%)</th>
         <th align="left">Last Updated</th>
       </tr>
     </thead>
-    <tbody id="latest-rows">
-      {% for node, metrics in latest_metrics.items() %}
-        <tr>
-          <td>{{ node }}</td>
-          <td>{{ "%.2f"|format(metrics.temperature) if metrics.temperature is not none else "—" }}</td>
-          <td>{{ "%.2f"|format(metrics.relativeHumidity) if metrics.relativeHumidity is not none else "—" }}</td>
-          <td>{{ last_seen[node] }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
+    <tbody id="latest-rows"></tbody>
   </table>
+
   <div class="button-container">
     <form id="telemetry-form" method="POST" action="/trigger">
       <button id="telemetry-button" type="submit" class="button-primary">
@@ -56,11 +53,13 @@
       </button>
     </form>
   </div>
+
   <div class="chart-container">
     {% for metric, nodes in chart_data.items() %}
       <div id="{{ metric }}" class="chart-box"></div>
     {% endfor %}
   </div>
+
   <div id="loading-overlay" class="loading-overlay">
     <div class="spinner"></div>
     Updating sensor data...
