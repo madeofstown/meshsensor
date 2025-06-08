@@ -9,6 +9,13 @@ import threading
 import data_modules
 from shared_functions import processTelemetry, requestTelemetry, addNode
 
+
+def safe_print(msg):
+    try:
+        safe_print(msg)
+    except UnicodeEncodeError:
+        safe_print(msg.encode("ascii", errors="replace").decode())
+
 # Load config
 with open("config.json") as f:
     config = json.load(f)
@@ -33,13 +40,13 @@ def onReceive(packet, interface):
         (packet["fromId"] or packet["from"]) in NODE_IDS and
         "environmentMetrics" in packet["decoded"]["telemetry"]
     ):
-        print(f"Received telemetry from {packet['fromId']}")
+        safe_print(f"Received telemetry from {packet['fromId']}")
         processTelemetry(packet, interface, db, DB_FILE)
 
 # Handle connection loss
 def onConnectionLost():
     global iface
-    print("Connection to Meshtastic lost. Reconnecting...")
+    safe_print("Connection to Meshtastic lost. Reconnecting...")
     try:
         iface.close()
     except:
@@ -55,10 +62,10 @@ def connect_to_radio():
             iface = meshtastic.tcp_interface.TCPInterface(RADIO_HOST)
             pub.subscribe(onReceive, "meshtastic.receive")
             pub.subscribe(onConnectionLost, "meshtastic.connection.lost")
-            print("Connected to Meshtastic Node.")
+            safe_print("Connected to Meshtastic Node.")
             break
         except Exception as e:
-            print(f"Connection failed: {e}. Retrying in 5 seconds...")
+            safe_print(f"Connection failed: {e}. Retrying in 5 seconds...")
             time.sleep(5)
 
 # Flask microservice
@@ -69,9 +76,9 @@ def trigger_telemetry():
     def background_request():
         try:
             requestTelemetry(iface, NODE_IDS, CH_INDEX)
-            print("Sent telemetry requests.")
+            safe_print("Sent telemetry requests.")
         except Exception as e:
-            print(f"Error during telemetry request: {e}")
+            safe_print(f"Error during telemetry request: {e}")
     threading.Thread(target=background_request).start()
     return jsonify({"status": "ok", "message": "Telemetry request started."})
 
@@ -81,7 +88,7 @@ def run_listener():
 
 # Start everything
 if __name__ == "__main__":
-    print("Starting MeshSensor listener service...")
+    safe_print("Starting MeshSensor listener service...")
     connect_to_radio()
     threading.Thread(target=run_listener).start()
     try:
@@ -90,4 +97,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         if iface:
             iface.close()
-        print("Listener stopped.")
+        safe_print("Listener stopped.")
