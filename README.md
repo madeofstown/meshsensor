@@ -1,96 +1,142 @@
 # MeshSensor
 
-MeshSensor is used to collect and visualize environmental metrics from nodes in a Meshtastic network. It includes a Flask-based web dashboard, a listener service for telemetry data, and a database for storing sensor readings.
+MeshSensor collects and visualizes environmental telemetry data from nodes in a Meshtastic network. It includes:
+
+- A **Flask-based web dashboard** to view live sensor data and charts.
+- A **listener service** that interfaces with a Meshtastic node on the local network, receives and stores telemetry from the node in `sensorDB.json`, and serves that data to the web dashboard. 
 
 
-## Installation
+---
+
+## 🔧 Installation
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.8+
 - Meshtastic-compatible hardware
 - A running Meshtastic TCP server
 
-### Steps
+### Setup
 
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/yourusername/meshsensor.git
    cd meshsensor
    ```
 
-2. Install dependencies:
+2. **Create a Python virtual environment**
+   ```bash
+   python -m venv .venv
+   ```
+
+3. **Activate the virtual environment**
+   ```bash
+   source .venv/bin/activate
+   ```
+
+2. **Install Python dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Configure the system:
-   - Copy `sample.config.json` to `config.json`:
+3. **Set up configuration:**
+   - Copy and customize the sample config:
      ```bash
      cp sample.config.json config.json
      ```
-   - Edit `config.json` to set your `radio_host`, `node_ids`, and other parameters.
+   - Edit `config.json`:
+     ```json
+     {
+       "radio_host": "127.0.0.1",
+       "node_ids": [305441741, "!1234abcd"],
+       "db_file": "sensorDB.json",
+       "channel_index": 1
+     }
+     ```
 
-4. Run the system:
+4. **Start the system:**
    ```bash
    python main.py
    ```
 
-## Usage
+---
+
+## 🚀 Usage
 
 ### Web Dashboard
 
-Access the dashboard at `http://localhost:5000`. Features include:
-- **Latest readings**: View the most recent metrics from all nodes.
-- **Node details**: Click on a node to see detailed charts of its telemetry data.
-- **Request telemetry**: Trigger a telemetry update from all nodes.
+Open your browser to [http://localhost:5000](http://localhost:5000) to access the dashboard.
+
+Features:
+- 📈 **Live charts** on the dashboard tracking of temperature (in Fahrenheit) and humidity per node
+- 🔁 **Request telemetry** manually via button
+- 🔍 **Per-node pages** for viewing detailed historical data for all environment metrics 
+
 
 ### Listener Service
 
-The listener service runs in the background, collecting telemetry data from the mesh network and storing it in `sensorDB.json`.
+The listener:
+- Subscribes to Meshtastic’s telemetry messages
+- Automatically reconnects on disconnect
+- Stores data in `sensorDB.json`
+- Provides endpoints for dashboard access
 
-### Configuration
+---
 
-Modify `config.json` to customize the system:
-```json
-{
-  "radio_host": "127.0.0.1",
-  "node_ids": [305441741, "!1234abcd"],
-  "db_file": "sensorDB.json",
-  "channel_index": 1
-}
+## ⚙️ Configuration
+
+Update `config.json` to customize behavior:
+- `radio_host`: Hostname or IP of the Meshtastic TCP interface
+- `node_ids`: List of node IDs to collect telemetry from
+- `db_file`: Path to the telemetry database (JSON)
+- `channel_index`: Channel to use for requesting telemetry
+
+---
+
+## 📁 Project Structure
+
+```text
+meshsensor/
+├── app.py                # Web dashboard (Flask)
+├── listener_service.py   # Telemetry listener + data provider
+├── shared_functions.py   # Utilities for telemetry processing
+├── data_modules.py       # Data classes for nodes and metrics
+├── config.json           # Your configuration
+├── sensorDB.json         # Telemetry database (auto-generated)
+├── templates/
+│   ├── dashboard.html    # Main dashboard template
+│   └── node_detail.html  # Per-node chart page
+└── static/
+    ├── css/
+    ├── js/
+    │   ├── dashboard.js
+    │   └── echarts.min.js
 ```
 
-### Database
+---
 
-Telemetry data is stored in `sensorDB.json`. The database includes:
-- Node information (ID, name, telemetry data)
-- Environmental metrics (temperature, humidity, etc.)
+## 🧪 Development Notes
 
-## Development
+- The **dashboard polls** the listener service for the latest data.
+- The **frontend renders temperature in Fahrenheit** and converts timestamps to the browser’s local timezone.
+- If `sensorDB.json` is missing or empty, the app will initialize with no data.
 
-### File Structure
+---
 
-- `app.py`: Flask web application for the dashboard.
-- `listener_service.py`: Background service for collecting telemetry data.
-- `shared_functions.py`: Utility functions for processing telemetry.
-- `data_modules.py`: Data models for nodes and telemetry.
-- `templates/`: HTML templates for the web dashboard.
-- `static/`: Static assets (echarts.min.js).
-
-## License
+## 📜 License
 
 This project is licensed under the [Unlicense](LICENSE).
 
-## Contributing
+---
 
-Contributions are welcome! Please submit a pull request or open an issue to discuss changes.
+## 🤝 Contributing
 
-## Acknowledgments
-
-- [Meshtastic](https://meshtastic.org): Open-source mesh network platform.
-- [Flask](https://flask.palletsprojects.com): Python web framework.
-- [ECharts](https://echarts.apache.org): Charting library for data visualization.
+Pull requests and feature suggestions are welcome! Open an issue to discuss changes before submitting. I also request that you test any changes on a Raspberry Pi running standard Raspberry Pi OS as that is the primary intended platform.
 
 ---
-Feel free to reach out if you have any questions or suggestions!
+
+## 🙏 Acknowledgments
+
+- [Meshtastic](https://meshtastic.org)
+- [Flask](https://flask.palletsprojects.com)
+- [ECharts](https://echarts.apache.org)
