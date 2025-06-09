@@ -43,7 +43,16 @@
         <th align="left">Last Updated</th>
       </tr>
     </thead>
-    <tbody id="latest-rows"></tbody>
+    <tbody id="latest-rows">
+      {% for node, metrics in latest_metrics.items() %}
+        <tr>
+          <td>{{ node }}</td>
+          <td>{{ "%.2f"|format(metrics.temperature) if metrics.temperature is not none else "—" }}</td>
+          <td>{{ "%.2f"|format(metrics.relativeHumidity) if metrics.relativeHumidity is not none else "—" }}</td>
+          <td>{{ last_seen[node] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
   </table>
 
   <div class="button-container">

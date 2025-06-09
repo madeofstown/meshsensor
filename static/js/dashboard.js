@@ -86,6 +86,34 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
   }
+  function updateLatest() {
+    fetch('/latest-data')
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById('latest-rows');
+        tbody.innerHTML = '';
+
+        for (const node in data.metrics) {
+          const c = data.metrics[node].temperature;
+          const temp = c != null ? ((c * 9 / 5) + 32).toFixed(2) : '—';
+          const rh = data.metrics[node].relativeHumidity?.toFixed(2) ?? '—';
+          const updated = data.lastSeen[node] ?? '—';
+
+          const row = `<tr>
+            <td>${node}</td>
+            <td>${temp}</td>
+            <td>${rh}</td>
+            <td>${updated}</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        }
+      })
+      .catch(err => {
+        console.error('Error updating latest data:', err);
+      });
+  }
+  setInterval(updateLatest, 15000);
+  updateLatest(); // Run once on page load
 
   checkForUpdates();
   setInterval(checkForUpdates, 15000);

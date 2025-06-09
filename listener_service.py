@@ -1,5 +1,3 @@
-import io
-import sys
 from flask import Flask, jsonify
 import time
 import threading
@@ -7,25 +5,8 @@ import json
 from pubsub import pub
 import meshtastic
 import meshtastic.tcp_interface
-import threading
 import data_modules
 from shared_functions import processTelemetry, requestTelemetry, addNode
-
-
-### Quiet the console
-output_buffer = io.StringIO()
-sys.stdout = output_buffer
-
-### And provide a way to output what we want to see
-def safe_print(msg):
-    try:
-        sys.stdout = sys.__stdout__
-        print(msg)
-        sys.stdout = output_buffer
-    except UnicodeEncodeError:
-        sys.stdout = sys.__stdout__
-        print(msg.encode("ascii", errors="replace").decode())
-        sys.stdout = output_buffer
 
 # Load config
 with open("config.json") as f:
@@ -48,16 +29,16 @@ iface = None  # Global interface object
 def onReceive(packet, interface):
     if (
         packet["decoded"]["portnum"] == "TELEMETRY_APP" and
-        (packet["fromId"] or packet["from"]) in NODE_IDS and
-        "environmentMetrics" in packet["decoded"]["telemetry"]
+        (packet.get("fromId") or packet.get("from")) in NODE_IDS and
+        "environmentMetrics" in packet["decoded"].get("telemetry", {})
     ):
-        safe_print(f"Received telemetry from {packet['fromId']}")
+        print("Received telemetry from {}".format(packet.get("fromId", "Unknown")))
         processTelemetry(packet, interface, db, DB_FILE)
 
 # Handle connection loss
 def onConnectionLost():
     global iface
-    safe_print("Connection to Meshtastic lost. Reconnecting...")
+    print("Connection to Meshtastic lost. Reconnecting...")
     try:
         iface.close()
     except:
@@ -73,10 +54,10 @@ def connect_to_radio():
             iface = meshtastic.tcp_interface.TCPInterface(RADIO_HOST)
             pub.subscribe(onReceive, "meshtastic.receive")
             pub.subscribe(onConnectionLost, "meshtastic.connection.lost")
-            safe_print("Connected to Meshtastic Node.")
+            print("Connected to Meshtastic Node.")
             break
         except Exception as e:
-            safe_print(f"Connection failed: {e}. Retrying in 5 seconds...")
+            print(f"Connection failed: {e}. Retrying in 5 seconds...")
             time.sleep(5)
 
 # Flask microservice
@@ -87,11 +68,20 @@ def trigger_telemetry():
     def background_request():
         try:
             requestTelemetry(iface, NODE_IDS, CH_INDEX)
-            safe_print("Sent telemetry requests.")
+            print("Sent telemetry requests.")
         except Exception as e:
-            safe_print(f"Error during telemetry request: {e}")
+            print(f"Error during telemetry request: {e}")
     threading.Thread(target=background_request).start()
     return jsonify({"status": "ok", "message": "Telemetry request started."})
+
+@listener_app.route("/data", methods=["GET"])
+def get_data():
+    try:
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            db_json = json.load(f)
+        return jsonify(db_json)
+    except Exception as e:
+        return jsonify({"error": f"Failed to load data: {str(e)}"}), 500
 
 # Start Flask
 def run_listener():
@@ -99,7 +89,7 @@ def run_listener():
 
 # Start everything
 if __name__ == "__main__":
-    safe_print("Starting MeshSensor listener service...")
+    print("Starting MeshSensor listener service...")
     connect_to_radio()
     threading.Thread(target=run_listener).start()
     try:
@@ -108,4 +98,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         if iface:
             iface.close()
-        safe_print("Listener stopped.")
+        print("Listener stopped.")
