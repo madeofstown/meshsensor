@@ -98,4 +98,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   updateCooldownState();
   setInterval(updateCooldownState, 30000);
+// Add refresh on new data logic
+  const pageLoadTime = Date.now();
+  setInterval(() => {
+    fetch('/latest-data')
+      .then(res => res.json())
+      .then(data => {
+        if (data.lastUpdated * 1000 > pageLoadTime) {
+          location.reload();
+        }
+      });
+  }, 10000);
 });
