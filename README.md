@@ -3,7 +3,7 @@
 MeshSensor collects and visualizes environmental telemetry data from nodes in a Meshtastic network. It includes:
 
 - A **Flask-based web dashboard** to view live sensor data and charts.
-- A **listener service** that interfaces with a Meshtastic node on the local network, receives and stores telemetry from the node in `sensorDB.json`, and serves that data to the web dashboard. 
+- A **listener service** that interfaces with a Meshtastic node via TCP, receives and stores environment metrics from a list of configured nodes, and serves that data to the web dashboard. 
 
 
 ---
