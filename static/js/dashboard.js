@@ -109,4 +109,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
   }, 10000);
+
+  let lastSeenTimestamp = 0;
+  setInterval(() => {
+    fetch('/latest-data')
+      .then(res => res.json())
+      .then(data => {
+        const latest = Math.max(...Object.values(data.lastSeen || {}).map(t => t || 0));
+        if (latest > lastSeenTimestamp) {
+          lastSeenTimestamp = latest;
+          location.reload();
+        }
+      });
+  }, 10000);
+  
 });
