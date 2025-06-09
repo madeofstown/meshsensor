@@ -21,7 +21,7 @@ MeshSensor collects and visualizes environmental telemetry data from nodes in a 
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/meshsensor.git
+   git clone https://github.com/madeofstown/meshsensor.git
    cd meshsensor
    ```
 
