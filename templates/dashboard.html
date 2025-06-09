@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="/static/css/dashboard.css">
   <script>
     window.chartData = {{ chart_data | tojson }};
+    window.latestUpdateTime = {{ latest_time }};
   </script>
   <script src="/static/js/echarts.min.js"></script>
   <script src="/static/js/dashboard.js" defer></script>

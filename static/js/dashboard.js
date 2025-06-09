@@ -99,28 +99,31 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCooldownState();
   setInterval(updateCooldownState, 30000);
 // Add refresh on new data logic
-  const pageLoadTime = Date.now();
+//  const pageLoadTime = Date.now();
+//  setInterval(() => {
+//    fetch('/latest-data')
+//      .then(res => res.json())
+//      .then(data => {
+//        if (data.lastUpdated * 1000 > pageLoadTime) {
+//          location.reload();
+//        }
+//      });
+//  }, 10000);
+
+  let lastKnownTimestamp = window.latestUpdateTime || 0;
+
   setInterval(() => {
-    fetch('/latest-data')
+    fetch("/latest-data")
       .then(res => res.json())
       .then(data => {
-        if (data.lastUpdated * 1000 > pageLoadTime) {
+        if (data.lastUpdated > lastKnownTimestamp) {
+          console.log("New data detected, reloading...");
           location.reload();
+        } else {
+          console.log("No new data.");
         }
-      });
+      })
+      .catch(err => console.warn("Failed to check for latest data:", err));
   }, 10000);
 
-  let lastSeenTimestamp = 0;
-  setInterval(() => {
-    fetch('/latest-data')
-      .then(res => res.json())
-      .then(data => {
-        const latest = Math.max(...Object.values(data.lastSeen || {}).map(t => t || 0));
-        if (latest > lastSeenTimestamp) {
-          lastSeenTimestamp = latest;
-          location.reload();
-        }
-      });
-  }, 10000);
-  
 });
