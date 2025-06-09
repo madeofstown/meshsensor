@@ -39,9 +39,7 @@ def dashboard():
 
         latest = telemetry[0]
         latest_time = max(latest_time, latest["time"])
-        delta = now - datetime.fromtimestamp(latest["time"], tz=timezone.utc)
-        minutes, seconds = divmod(int(delta.total_seconds()), 60)
-        last_seen[name] = f"{minutes} min {seconds} sec ago" if minutes else f"{seconds} sec ago"
+        last_seen[name] = latest["time"]
 
         metrics = latest["environmentMetrics"]
         latest_metrics[name] = {
@@ -107,7 +105,6 @@ def latest_data():
     raw = fetch_sensor_data()
     latest_metrics = {}
     last_seen = {}
-    now = datetime.now(timezone.utc)
     last_timestamps = {}
 
     for node in raw.get("nodes", []):
@@ -121,9 +118,7 @@ def latest_data():
             latest = telemetry[0]
             last_timestamps[name] = latest["time"]
 
-            delta = now - datetime.fromtimestamp(latest["time"], tz=timezone.utc)
-            minutes, seconds = divmod(int(delta.total_seconds()), 60)
-            last_seen[name] = f"{minutes} min {seconds} sec ago" if minutes else f"{seconds} sec ago"
+            last_seen[name] = latest["time"]
 
             metrics = latest["environmentMetrics"]
             latest_metrics[name] = {

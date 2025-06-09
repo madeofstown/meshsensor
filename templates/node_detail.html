@@ -24,24 +24,44 @@
 <body>
   <h2>📊 {{ node_name }} (Node ID: {{ node_id }})</h2>
   <a href="/">← Back to Dashboard</a>
+
   {% for metric, values in metrics.items() %}
     <div id="{{ metric }}" class="chart-box"></div>
   {% endfor %}
 
   <script>
     const metrics = {{ metrics | tojson }};
+
+    function formatTitle(metric) {
+      if (/^[a-z]+([A-Z][a-z]*)+$/.test(metric)) {
+        return metric.replace(/([a-z])([A-Z])/g, '$1 $2')
+                     .replace(/\b\w/g, char => char.toUpperCase());
+      } else if (metric.length <= 3) {
+        return metric.toUpperCase();
+      } else {
+        return metric.charAt(0).toUpperCase() + metric.slice(1);
+      }
+    }
+
     for (const metric in metrics) {
       const chart = echarts.init(document.getElementById(metric), 'dark');
+      let data = metrics[metric];
+
+      // Convert temperature values to Fahrenheit
+      ////if (metric === "temperature") {
+      ////  data = data.map(([ts, c]) => [ts, (c * 9 / 5 + 32).toFixed(2)]);
+      ////}
+
       chart.setOption({
-        title: { text: metric + ' Over Time' },
+        title: { text: formatTitle(metric) + ' Over Time' },
         tooltip: { trigger: 'axis' },
         xAxis: { type: 'time' },
-        yAxis: { type: 'value', name: metric },
+        yAxis: { type: 'value', name: formatTitle(metric) },
         series: [{
-          name: metric,
+          name: formatTitle(metric),
           type: 'line',
           smooth: true,
-          data: metrics[metric]
+          data: data
         }]
       });
     }
