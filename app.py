@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import requests
 from datetime import datetime, timezone
 from flask import Flask, render_template, jsonify, redirect, url_for, flash
@@ -7,16 +8,51 @@ from flask import Flask, render_template, jsonify, redirect, url_for, flash
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - [%(name)s] - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 LISTENER_URL = "http://localhost:5001"
+REQUEST_TIMEOUT = 5
 
 def fetch_sensor_data():
+    """Fetch sensor data from listener service (legacy format for compatibility)."""
     try:
-        response = requests.get(f"{LISTENER_URL}/data", timeout=5)
+        response = requests.get(f"{LISTENER_URL}/data", timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         return response.json()
-    except Exception as e:
-        print(f"⚠️ Error fetching sensor data: {e}")
+    except requests.exceptions.Timeout:
+        logger.error("Timeout fetching sensor data")
         return {"nodes": []}
+    except requests.exceptions.ConnectionError:
+        logger.error("Cannot connect to listener service")
+        return {"nodes": []}
+    except Exception as e:
+        logger.error(f"Error fetching sensor data: {e}")
+        return {"nodes": []}
+
+def fetch_latest_telemetry():
+    """Fetch latest telemetry from all nodes."""
+    try:
+        response = requests.get(f"{LISTENER_URL}/api/telemetry/latest", timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json().get("data", [])
+    except Exception as e:
+        logger.error(f"Error fetching latest telemetry: {e}")
+        return []
+
+def fetch_nodes():
+    """Fetch list of all nodes."""
+    try:
+        response = requests.get(f"{LISTENER_URL}/api/nodes", timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json().get("nodes", [])
+    except Exception as e:
+        logger.error(f"Error fetching nodes: {e}")
+        return []
 
 @app.route('/')
 def dashboard():
@@ -90,14 +126,21 @@ def node_detail(node_id):
 
 @app.route('/trigger', methods=['POST'])
 def trigger_telemetry():
+    """Trigger telemetry request from all nodes."""
     try:
-        response = requests.post(f"{LISTENER_URL}/requestTelemetry", timeout=10)
-        if response.ok:
+        response = requests.post(f"{LISTENER_URL}/api/telemetry/request", timeout=10)
+        if response.status_code in (200, 202):  # 202 Accepted
             flash("📡 Telemetry request sent to listener.")
+            logger.info("Telemetry request triggered")
         else:
             flash(f"❌ Listener error: {response.text}")
+            logger.warning(f"Listener returned status {response.status_code}")
+    except requests.exceptions.ConnectionError:
+        flash("❌ Cannot connect to telemetry listener")
+        logger.error("Cannot reach listener service")
     except Exception as e:
-        flash(f"❌ Cannot reach telemetry listener: {str(e)}")
+        flash(f"❌ Error: {str(e)}")
+        logger.error(f"Error triggering telemetry: {e}")
     return redirect(url_for('dashboard'))
 
 @app.route('/latest-data')
