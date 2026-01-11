@@ -34,21 +34,30 @@ cp sensorDB.json sensorDB.json.backup
 
 ### 2. Update Configuration
 
-Update `config.json` with new field:
+Copy `sample.config.json` to `config.json` and update with your settings:
+
+```bash
+cp sample.config.json config.json
+```
+
+Then edit `config.json`:
 
 ```json
 {
-  "radio_host": "10.7.0.97",
-  "node_ids": ["!20b1663e", "!bb788268", "!718b5394"],
+  "radio_host": "127.0.0.1",
+  "node_ids": [305441741, "!1234abcd"],
   "db_file": "sensorDB.db",
   "channel_index": 1,
   "data_retention_days": 30
 }
 ```
 
-**Key changes:**
-- `db_file` changed from `sensorDB.json` to `sensorDB.db`
-- Added `data_retention_days` (optional, defaults to 30)
+**Configuration fields:**
+- `radio_host`: IP address of Meshtastic node (see [sample.config.json](sample.config.json))
+- `node_ids`: List of node IDs to monitor (see [sample.config.json](sample.config.json))
+- `db_file`: Database file location (default: `sensorDB.db`)
+- `channel_index`: Meshtastic channel to use (default: 1)
+- `data_retention_days`: Keep data for this many days (default: 30)
 
 ### 3. First Run - Automatic Migration
 
