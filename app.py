@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import requests
+import time
 from datetime import datetime, timezone
 from flask import Flask, render_template, jsonify, redirect, url_for, flash
 
@@ -17,6 +18,18 @@ logger = logging.getLogger(__name__)
 
 LISTENER_URL = "http://localhost:5001"
 REQUEST_TIMEOUT = 5
+
+def unix_to_local(timestamp):
+    """Convert Unix timestamp to local datetime string."""
+    if timestamp is None:
+        return "Never"
+    try:
+        if isinstance(timestamp, (int, float)):
+            dt = datetime.fromtimestamp(timestamp)
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        return "Invalid"
+    except (ValueError, OSError, OverflowError):
+        return "Invalid"
 
 def fetch_sensor_data():
     """Fetch sensor data from listener service (legacy format for compatibility)."""
@@ -63,9 +76,18 @@ def dashboard():
     now = datetime.now(timezone.utc)
     latest_time = 0
 
+    def parse_timestamp(tel):
+        """Extract Unix timestamp from telemetry data."""
+        # Try timestamp field first, then time field for backward compatibility
+        ts = tel.get("timestamp") or tel.get("time")
+        if isinstance(ts, (int, float)):
+            return datetime.fromtimestamp(ts, tz=timezone.utc)
+        return datetime.utcnow()
+
     for node in raw.get("nodes", []):
         name = node.get("longName", "Unknown").strip()
-        telemetry = sorted(node.get("telemetry", []), key=lambda x: x["time"], reverse=True)
+        telemetry = node.get("telemetry", [])
+        telemetry = sorted(telemetry, key=parse_timestamp, reverse=True)
 
         latest_metrics[name] = {'temperature': None, 'relativeHumidity': None}
         last_seen[name] = "Never"
@@ -74,21 +96,23 @@ def dashboard():
             continue
 
         latest = telemetry[0]
-        latest_time = max(latest_time, latest["time"])
-        last_seen[name] = latest["time"]
+        latest_ts = parse_timestamp(latest)
+        latest_time = max(latest_time, latest_ts.timestamp())
+        last_seen[name] = unix_to_local(latest_ts.timestamp())
 
-        metrics = latest["environmentMetrics"]
+        metrics = latest.get("environmentMetrics", {})
         latest_metrics[name] = {
             'temperature': metrics.get("temperature"),
             'relativeHumidity': metrics.get("relativeHumidity")
         }
 
         for t in telemetry:
-            ts = datetime.fromtimestamp(t["time"], tz=timezone.utc).isoformat()
+            ts_obj = parse_timestamp(t)
+            ts_unix = ts_obj.timestamp()
             for k in chart_data:
-                v = t["environmentMetrics"].get(k)
+                v = t.get("environmentMetrics", {}).get(k)
                 if v is not None:
-                    chart_data[k].setdefault(name, []).append([ts, v])
+                    chart_data[k].setdefault(name, []).append([ts_unix, v])
 
     return render_template("dashboard.html",
         chart_data=chart_data,
@@ -105,16 +129,25 @@ def nodes_list():
         for node in raw.get("nodes", [])
     ])
 
-@app.route('/node/<int:node_id>')
+@app.route('/node/<node_id>')
 def node_detail(node_id):
+    """Display detail page for a specific node."""
     raw = fetch_sensor_data()
+    
+    def parse_timestamp(tel):
+        ts = tel.get("timestamp") or tel.get("time")
+        if isinstance(ts, (int, float)):
+            return datetime.fromtimestamp(ts, tz=timezone.utc)
+        return datetime.utcnow()
+    
     for node in raw.get("nodes", []):
-        if node.get("nodeID") == node_id:
+        if node.get("nodeID") == node_id or str(node.get("id")) == str(node_id):
             metrics = {}
             for t in node.get("telemetry", []):
-                ts = datetime.fromtimestamp(t["time"], tz=timezone.utc).isoformat()
+                ts_obj = parse_timestamp(t)
+                ts_str = ts_obj.strftime("%Y-%m-%d %H:%M:%S")
                 for k, v in t.get("environmentMetrics", {}).items():
-                    metrics.setdefault(k, []).append((ts, v))
+                    metrics.setdefault(k, []).append((ts_str, v))
             return render_template(
                 "node_detail.html",
                 node_id=node_id,
@@ -145,31 +178,39 @@ def trigger_telemetry():
 
 @app.route('/latest-data')
 def latest_data():
+    """Get latest telemetry for all nodes."""
     raw = fetch_sensor_data()
     latest_metrics = {}
     last_seen = {}
     last_timestamps = {}
+    
+    def parse_timestamp(tel):
+        ts = tel.get("timestamp") or tel.get("time")
+        if isinstance(ts, (int, float)):
+            return datetime.fromtimestamp(ts, tz=timezone.utc)
+        return datetime.utcnow()
 
     for node in raw.get("nodes", []):
         name = node.get("longName", "Unknown").strip()
-        telemetry = sorted(node.get("telemetry", []), key=lambda x: x["time"], reverse=True)
+        telemetry = sorted(node.get("telemetry", []), key=parse_timestamp, reverse=True)
 
         latest_metrics[name] = {'temperature': None, 'relativeHumidity': None}
         last_seen[name] = "Never"
 
         if telemetry:
             latest = telemetry[0]
-            last_timestamps[name] = latest["time"]
+            ts_obj = parse_timestamp(latest)
+            ts_unix = ts_obj.timestamp()
+            last_timestamps[name] = ts_unix
+            last_seen[name] = unix_to_local(ts_unix)
 
-            last_seen[name] = latest["time"]
-
-            metrics = latest["environmentMetrics"]
+            metrics = latest.get("environmentMetrics", {})
             latest_metrics[name] = {
                 'temperature': metrics.get("temperature"),
                 'relativeHumidity': metrics.get("relativeHumidity")
             }
 
-    latest_time = max(last_timestamps.values(), default=0)
+    latest_time = max((datetime.fromisoformat(v.replace('Z', '+00:00')).timestamp() for v in last_timestamps.values()), default=0)
 
     return jsonify({
         "metrics": latest_metrics,
@@ -180,8 +221,15 @@ def latest_data():
 
 @app.route('/latest-chart-data')
 def latest_chart_data():
+    """Get latest chart data point from each node."""
     raw = fetch_sensor_data()
     chart_points = {}
+    
+    def parse_timestamp(tel):
+        ts = tel.get("timestamp") or tel.get("time")
+        if isinstance(ts, (int, float)):
+            return datetime.fromtimestamp(ts, tz=timezone.utc)
+        return datetime.utcnow()
 
     for node in raw.get("nodes", []):
         name = node.get("longName", "Unknown").strip()
@@ -189,12 +237,13 @@ def latest_chart_data():
         if not telemetry:
             continue
 
-        latest = sorted(telemetry, key=lambda x: x["time"], reverse=True)[0]
-        ts = datetime.fromtimestamp(latest["time"], tz=timezone.utc).isoformat()
+        latest = sorted(telemetry, key=parse_timestamp, reverse=True)[0]
+        ts_obj = parse_timestamp(latest)
+        ts_unix = ts_obj.timestamp()
 
-        for metric, value in latest["environmentMetrics"].items():
+        for metric, value in latest.get("environmentMetrics", {}).items():
             if value is not None:
-                chart_points.setdefault(metric, {}).setdefault(name, []).append([ts, value])
+                chart_points.setdefault(metric, {}).setdefault(name, []).append([ts_unix, value])
 
     return jsonify(chart_points)
 

@@ -70,7 +70,8 @@ class Telemetry(Base):
         return {
             "id": self.id,
             "nodeID": self.node_id,
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": int(self.timestamp.timestamp()) if self.timestamp else None,
+            "time": int(self.timestamp.timestamp()) if self.timestamp else None,
             "environmentMetrics": {
                 "temperature": self.temperature,
                 "relativeHumidity": self.relative_humidity,
